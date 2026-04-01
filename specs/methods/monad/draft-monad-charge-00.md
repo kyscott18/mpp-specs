@@ -76,7 +76,7 @@ as defined in {{I-D.payment-intent-charge}}. The server may settle the
 payment any time before the challenge `expires` auth-param timestamp.
 
 Monad is a high-performance EVM-compatible Layer-1 blockchain with
-sub-second finality (~400ms block time) {{MONAD-DOCS}}. This
+sub-second finality (~800ms) {{MONAD-DOCS}}. This
 specification defines the request schema, credential formats, and
 settlement procedures for charge transactions on Monad.
 
@@ -320,7 +320,7 @@ server:
       |------------------------------------------------------->        |
       |                                |                                |
       |  (2) Transaction confirmed     |                                |
-      |      (~400ms finality)         |                                |
+      |      (~800ms finality)         |                                |
       |<-------------------------------------------------------        |
       |                                |                                |
       |  (3) Authorization:            |                                |
@@ -342,7 +342,7 @@ server:
 ~~~
 
 1. Client broadcasts ERC-20 `transfer(recipient, amount)` to Monad
-2. Transaction included in block with fast finality (~400ms)
+2. Transaction included in block with fast finality (~800ms)
 3. Client submits credential with `type="hash"` containing the tx hash
 4. Server fetches the transaction receipt
 5. Server verifies the `Transfer` event log matches the challenge
@@ -370,7 +370,7 @@ message. The server calls `receiveWithAuthorization` and pays gas:
       |                                |------------------------------->|
       |                                |                                |
       |                                |  (5) Transfer complete         |
-      |                                |      (~400ms finality)         |
+      |                                |      (~800ms finality)         |
       |                                |<-------------------------------|
       |                                |                                |
       |  (6) 200 OK                    |                                |
@@ -386,7 +386,7 @@ message. The server calls `receiveWithAuthorization` and pays gas:
 4. Server calls `receiveWithAuthorization` on the token contract
    (the server MUST be the recipient, as `receiveWithAuthorization`
    requires `msg.sender == to`)
-5. Transaction confirmed with fast finality (~400ms)
+5. Transaction confirmed with fast finality (~800ms)
 6. Server returns a receipt whose `reference` is the transaction hash
 
 ### ERC-3009 Token Requirements
