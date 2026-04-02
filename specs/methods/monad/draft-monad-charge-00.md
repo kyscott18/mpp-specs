@@ -139,7 +139,7 @@ ERC-3009):
       |  (4) Authorization: Payment |                             |
       |      (with authorization)   |                             |
       |-------------------------->  |                             |
-      |                             |  (5) receiveWithAuth tx     |
+      |                             |  (5) transferWithAuth tx    |
       |                             |-------------------------->  |
       |                             |  (6) Transfer complete      |
       |                             |<--------------------------  |
@@ -265,7 +265,7 @@ the transaction hash for the server to verify onchain.
 
 When `type` is `"authorization"`, the client has signed an ERC-3009
 `TransferWithAuthorization` message off-chain. The server calls
-`receiveWithAuthorization` on the token contract to execute the transfer.
+`transferWithAuthorization` on the token contract to execute the transfer.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -351,7 +351,7 @@ server:
 ## Pull Mode (Server Broadcasts via ERC-3009)
 
 In pull mode, the client signs an ERC-3009 `TransferWithAuthorization`
-message. The server calls `receiveWithAuthorization` and pays gas:
+message. The server calls `transferWithAuthorization` and pays gas:
 
 ~~~
    Client                           Server                        Monad Network
@@ -383,9 +383,7 @@ message. The server calls `receiveWithAuthorization` and pays gas:
 2. Client submits credential with `type="authorization"` containing the
    authorization parameters and signature
 3. Server validates all parameters match the challenge
-4. Server calls `receiveWithAuthorization` on the token contract
-   (the server MUST be the recipient, as `receiveWithAuthorization`
-   requires `msg.sender == to`)
+4. Server calls `transferWithAuthorization` on the token contract
 5. Transaction confirmed with fast finality (~800ms)
 6. Server returns a receipt whose `reference` is the transaction hash
 
@@ -393,7 +391,7 @@ message. The server calls `receiveWithAuthorization` and pays gas:
 
 Pull mode requires the ERC-20 token to implement ERC-3009 {{EIP-3009}}.
 Clients MUST NOT use pull mode with tokens that do not support
-`receiveWithAuthorization`. Known supported tokens include USDC.
+ERC-3009. Known supported tokens include USDC.
 
 ### EIP-712 Domain
 
@@ -432,12 +430,10 @@ Before accepting a credential, servers MUST verify:
 
 1. Verify `payload.to` matches the challenge `recipient`
 2. Verify `payload.value` matches the challenge `amount`
-3. Verify the server account address matches the challenge `recipient`
-   (`receiveWithAuthorization` requires `msg.sender == to`)
-4. Verify `validBefore` has not passed
-5. Verify the authorization signature has not been used in a previous
+3. Verify `validBefore` has not passed
+4. Verify the authorization signature has not been used in a previous
    credential
-6. Call `receiveWithAuthorization` on the token contract with the provided
+5. Call `transferWithAuthorization` on the token contract with the provided
    parameters and signature components (`v`, `r`, `s`)
 
 ## Receipt Generation
@@ -479,7 +475,7 @@ track consumed credentials at the application layer:
   authorization signature (or a hash thereof) and reject duplicates
   before broadcasting. Without this, concurrent submissions of the
   same authorization could cause the server to broadcast duplicate
-  `receiveWithAuthorization` transactions, wasting gas on reverted
+  `transferWithAuthorization` transactions, wasting gas on reverted
   calls.
 
 ## Amount Verification
@@ -499,19 +495,16 @@ When using pull mode with ERC-3009 authorizations:
 - The `validAfter` timestamp SHOULD be set to `0` (immediately valid)
 - A random `bytes32` nonce MUST be generated for each authorization to
   prevent replay
-- The server calling `receiveWithAuthorization` MUST be the `to` address
-  in the authorization; this is enforced by the token contract
 
 ## Authorization Front-Running
 
-The EIP-712 typed data signed by the client is `TransferWithAuthorization`,
-which is the same struct verified by both `transferWithAuthorization` and
-`receiveWithAuthorization`. Any party that obtains the signature can call
-`transferWithAuthorization` — which has no `msg.sender` restriction — to
-execute the transfer before the server calls `receiveWithAuthorization`.
+The EIP-712 typed data signed by the client is `TransferWithAuthorization`.
+Any party that obtains the signature can call `transferWithAuthorization`
+— which has no `msg.sender` restriction — to execute the transfer before
+the server does.
 
 The funds still arrive at the correct `to` address and cannot be
-redirected, but the server's subsequent `receiveWithAuthorization` call
+redirected, but the server's subsequent `transferWithAuthorization` call
 will revert (the ERC-3009 nonce is already consumed), wasting gas. The
 server may also fail to correlate the transfer with the client's request,
 since it arrived via a different transaction.
@@ -521,7 +514,7 @@ Mitigations:
 - Authorization credentials are transmitted over HTTPS directly to the
   server, not broadcast to a public mempool, limiting the interception
   window.
-- Servers SHOULD submit `receiveWithAuthorization` promptly after
+- Servers SHOULD submit `transferWithAuthorization` promptly after
   validation to minimize exposure.
 - Servers MAY monitor for `Transfer` events matching a pending
   authorization to detect front-run settlements and still grant access.
@@ -529,7 +522,7 @@ Mitigations:
 ## Server-Paid Gas (Pull Mode)
 
 Servers accepting pull mode credentials pay gas fees for broadcasting
-`receiveWithAuthorization`. This creates financial risk:
+`transferWithAuthorization`. This creates financial risk:
 
 **Denial of Service**: Malicious clients could submit authorizations
 that fail on-chain (e.g., insufficient token balance), causing the
@@ -551,7 +544,7 @@ Methods" registry established by {{I-D.httpauth-payment}}:
 |-------------------|-------------|-----------|
 | `monad` | Monad blockchain ERC-20 token transfer | This document |
 
-Contact: Monad Foundation (<contact@monad.foundation>)
+Contact: Monad Foundation (<kscott@monad.foundation>)
 
 ## Payment Intent Registration
 
